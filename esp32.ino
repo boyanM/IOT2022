@@ -2,7 +2,7 @@
 #include <NeoPixelBus.h>
 #include <WiFiUdp.h>
 
-#define INPUT_DELAY 50
+#define INPUT_DELAY 70
 #define SCORE_COLOR  RgbColor(128, 0, 255)
 #define EMPTY_COLOR   RgbColor(0) 
 #define RESTART_DELAY 10000
@@ -92,11 +92,13 @@ void setup() {
 void  Task1code(void * pvParameters) {
    while (p1_client.connected()) {
  
-      while (p1_client.available()>0) {
+      while (p1_client.available() > 0) {
         String line = p1_client.readString();
+        delay(1000);
+
         Serial.println("Line is " + line);
       }
-      delay(10);
+      delay(1000);
     }
 }
 
