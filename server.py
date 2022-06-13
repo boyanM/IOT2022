@@ -7,10 +7,9 @@ HOST = "192.168.0.104"  # Standard loopback interface address (localhost)
 PORT = 65432  # Port to listen on (non-privileged ports are > 1023)
 FORMAT = 'utf-8'
 
-
+first = False
 LEFT_SCORE = 0
 RIGHT_SCORE = 0
-
 #Modules
 import pygame
 pygame.init()
@@ -37,11 +36,18 @@ SCORE_FONT = pygame.font.SysFont("comicsans",50)
 
 
 
-def handle_client(conn,addr,left_paddle):
+def handle_client(conn,left_paddle):
+	prev = ""
 	while True:
-		data = conn.recv(1024).decode(FORMAT)
+		dataPair = conn.recvfrom(2)
+		data = dataPair[0].decode(FORMAT).rstrip('\x00')
+		addr = dataPair[1] 
+		print(data)
 		score = (f"{LEFT_SCORE} : {RIGHT_SCORE}")
-		conn.send(score.encode(FORMAT))
+		if prev != score :
+			print(score.encode(FORMAT))
+			conn.sendto(score.encode(FORMAT), addr)
+			prev = score
 		if not data:
 			break
 		if data == "U":
@@ -171,15 +177,10 @@ def main():
 	##### SOCKET
 
 	CONNECTED_PLAYERS = 0
-	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	s =  socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
 	s.bind((HOST, PORT))
-	s.listen()
-	while CONNECTED_PLAYERS != 1:
-		conn, addr = s.accept()
-		print(f"Connected by {addr}")
-		thread = threading.Thread(target=handle_client, args=(conn, addr,left_paddle), daemon=True)
-		thread.start()
-		CONNECTED_PLAYERS+=1
+	thread = threading.Thread(target=handle_client, args=(s,left_paddle), daemon=True)
+	thread.start()
 	#########
 
 
@@ -202,8 +203,6 @@ def main():
 		ball.move()
 		handle_collision(ball, left_paddle, right_paddle)
 
-		print(RIGHT_SCORE)
-		print(LEFT_SCORE)
 		if ball.x <= 0:
 			RIGHT_SCORE += 1
 			ball.reset()
