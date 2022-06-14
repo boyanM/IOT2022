@@ -36,7 +36,7 @@ SCORE_FONT = pygame.font.SysFont("comicsans",50)
 
 
 
-def handle_client(conn,left_paddle):
+def handle_client(conn,paddle):
 	prev = ""
 	while True:
 		dataPair = conn.recvfrom(2)
@@ -51,12 +51,12 @@ def handle_client(conn,left_paddle):
 		if not data:
 			break
 		if data == "U":
-			left_paddle.move(up=True)
-			left_paddle.move(up=True)
+			paddle.move(up=True)
+			paddle.move(up=True)
 	
 		elif data == "D":
-			left_paddle.move(up=False)
-			left_paddle.move(up=False)
+			paddle.move(up=False)
+			paddle.move(up=False)
 		#print(data.decode(FORMAT))\
 
 
@@ -183,11 +183,12 @@ def main():
 	thread.start()
 	#########
 
+	##### SOCKET 2
 
-	# t2 = threading.Thread(target=thread_function, args=(left_paddle,), daemon=True)
-	
-	# t2.start()
-#	time.sleep(5)
+	s2 =  socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+	s2.bind((HOST, 65443))
+	thread2 = threading.Thread(target=handle_client, args=(s2,right_paddle), daemon=True)
+	thread2.start()
 	
 	while run:
 
