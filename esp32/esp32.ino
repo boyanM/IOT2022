@@ -25,8 +25,8 @@ const char* PASSWORD = "atiradeon21";
 const char* HOST = "192.168.0.104";
 const uint16_t PORT = 65432;
 
-const uint8_t UP_COMMAND[2] = "U";
-const uint8_t DOWN_COMMAND[2] = "D";
+const uint8_t UP_COMMAND[3] = "U1";
+const uint8_t DOWN_COMMAND[3] = "U2";
 
 byte buffer[11];
 WiFiUDP udp;
@@ -122,13 +122,13 @@ void loop() {
 
   if(digitalRead(P1_UP) == LOW) {
      udp.beginPacket(HOST,PORT);
-     udp.write(UP_COMMAND, 2);
+     udp.write(UP_COMMAND, 3);
      udp.endPacket();
      delay(INPUT_DELAY);
 
   }else if(digitalRead(P1_DOWN) == LOW) {
       udp.beginPacket(HOST, PORT);
-     udp.write(DOWN_COMMAND, 2);
+     udp.write(DOWN_COMMAND, 3);
      udp.endPacket();
     delay(INPUT_DELAY);
   }

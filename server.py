@@ -3,7 +3,7 @@
 import threading
 import socket
 import time
-HOST = "127.0.0.1"  # Standard loopback interface address (localhost)
+HOST = "192.168.0.104"  # Standard loopback interface address (localhost)
 PORT = 65432  # Port to listen on (non-privileged ports are > 1023)
 FORMAT = 'utf-8'
 
@@ -29,20 +29,22 @@ pygame.display.set_caption("PONG")
 
 FPS = 60
 
+p1Connected = False
+p2Connected = False
+
 WHITE = (255,255,255)
 BLACK = (0,0,0)
 
 SCORE_FONT = pygame.font.SysFont("comicsans",50)
 
-CONNECTED_PLAYERS = 0
-
 WINNING_SCORE = 10
 
 
-def handle_client(conn,paddle):
+def handle_client(conn,left_paddle, right_paddle):
 	prev = ""
+	global p1Connected, p2Connected
 	while True:
-		dataPair = conn.recvfrom(2)
+		dataPair = conn.recvfrom(4)
 		data = dataPair[0].decode(FORMAT).rstrip('\x00')
 		addr = dataPair[1] 
 		print(data)
@@ -53,14 +55,23 @@ def handle_client(conn,paddle):
 			prev = score
 		if not data:
 			break
-		if data == "U":
-			paddle.move(up=True)
-			paddle.move(up=True)
+
+		if data == "U1" and left_paddle.y > 0:
+			left_paddle.move(up=True)
+			left_paddle.move(up=True)
+			p1Connected = True	
+		elif data == "D1" and left_paddle.y + PADDLE_HEIGHT < HEIGHT:
+			left_paddle.move(up=False)
+			left_paddle.move(up=False)
+
+		elif data == "U2" and right_paddle.y > 0:
+			right_paddle.move(up=True)
+			right_paddle.move(up=True)
+			p2Connected = True
 	
-		elif data == "D":
-			paddle.move(up=False)
-			paddle.move(up=False)
-		#print(data.decode(FORMAT))\
+		elif data == "D2" and  right_paddle.y + PADDLE_HEIGHT < HEIGHT:
+			right_paddle.move(up=False)
+			right_paddle.move(up=False)
 
 
 class Paddle:
@@ -173,41 +184,19 @@ def handle_paddle_movement(keys, left_paddle, right_paddle):
 	if keys[pygame.K_DOWN] and right_paddle.y + PADDLE_HEIGHT < HEIGHT:
 		right_paddle.move(up=False)
 
-
-def main():
+def game(s, left_paddle, right_paddle, ball):
 	global LEFT_SCORE, RIGHT_SCORE
 
 	run = True
 	wait = True
 	clock = pygame.time.Clock()
 
-	left_paddle = Paddle(10, HEIGHT//2 - PADDLE_HEIGHT//2,PADDLE_WIDTH,PADDLE_HEIGHT)
-	right_paddle = Paddle(WIDTH - 10 - PADDLE_WIDTH, HEIGHT//2 - PADDLE_HEIGHT//2,PADDLE_WIDTH,PADDLE_HEIGHT)
-	ball = Ball(WIDTH//2, HEIGHT//2, BALL_RADIUS)
-
-
-
-	##### Player 1 - SOCKET
-
-	s =  socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
-	s.bind((HOST, PORT))
-	thread = threading.Thread(target=handle_client, args=(s,left_paddle), daemon=True)
-	thread.start()
-	#########
-
-	##### Player 2 - SOCKET
-
-	s2 =  socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
-	s2.bind((HOST, 65443))
-	thread2 = threading.Thread(target=handle_client, args=(s2,right_paddle), daemon=True)
-	thread2.start()
-	#########
 
 
 	wait_msg = SCORE_FONT.render(f"Waiting for players", 1, WHITE)
-	start_msg = SCORE_FONT.render(f"Game starts in: 3s.",1,WHITE)
+	start_msg = SCORE_FONT.render(f"Game starts in: 5s.",1,WHITE)
 
-	p1_ready_msg = SCORE_FONT.render(f"Plater 1 Ready", 1, WHITE)
+	p1_ready_msg = SCORE_FONT.render(f"Player 1 Ready", 1, WHITE)
 	p2_ready_msg = SCORE_FONT.render(f"Player 2 Ready", 1, WHITE)
 
 	while wait:
@@ -217,22 +206,29 @@ def main():
 	
 		BOARD.blit(wait_msg, (WIDTH//2 - wait_msg.get_width()//2,20))
 
-		if CONNECTED_PLAYERS == 1:
+		if (p1Connected and not p2Connected) or ( not p1Connected and p2Connected):
+			
 			BOARD.blit(p1_ready_msg, (WIDTH//4 - p1_ready_msg.get_width()//2,250))
 
-		elif CONNECTED_PLAYERS == 2:
-			BOARD.blit(p2_ready_msg, ((WIDTH//4)*3 - p2_ready_msg.get_width()//2,20))
+		elif p1Connected and p2Connected:
+			BOARD.fill(BLACK)
+			BOARD.blit(p1_ready_msg, (WIDTH//4 - p1_ready_msg.get_width()//2,250))
+			BOARD.blit(p2_ready_msg, ((WIDTH//4)*3 - p2_ready_msg.get_width()//2,250))
 			BOARD.blit(start_msg, (WIDTH//2 - start_msg.get_width()//2,20))
 			wait=False
+			pygame.display.update()
 			pygame.time.wait(3000)
 
 		pygame.display.update()
 
+	left_paddle.reset()
+	right_paddle.reset()
+	won = False
 
 	while run:
 
 		clock.tick(FPS)
-		draw(BOARD,[left_paddle,right_paddle], ball)
+		draw(BOARD,[left_paddle,right_paddle], ball) 
 
 		for event in pygame.event.get():
 			if event.type == pygame.QUIT:
@@ -250,32 +246,44 @@ def main():
 			LEFT_SCORE += 1
 			ball.reset()
 
-		won = False
 
-	if LEFT_SCORE >= WINNING_SCORE:
-		won = True
-		win_text = "Left Player Won!"
-	elif RIGHT_SCORE >= WINNING_SCORE:
-		won = True
-		win_text = "Right Player Won!"
+		if LEFT_SCORE >= WINNING_SCORE:
+			print("left won")
+			won = True
+			win_text = "Left Player Won!"
+		elif RIGHT_SCORE >= WINNING_SCORE:
+			print("right won")
+			won = True
+			win_text = "Right Player Won!"
 
-	if won:
-		text = SCORE_FONT.render(win_text, 1, WHITE)
-		BOARD.blit(text, (WIDTH//2 - text.get_width()//2, HEIGHT//2 - text.get_height()//2))
-		pygame.display.update()
-		pygame.time.delay(5000)
-		ball.reset()
-		left_paddle.reset()
-		right_paddle.reset()
-		LEFT_SCORE = 0
-		RIGHT_SCORE = 0
+		if won:
+			text = SCORE_FONT.render(win_text, 1, WHITE)
+			BOARD.blit(text, (WIDTH//2 - text.get_width()//2, HEIGHT//2 - text.get_height()//2))
+			pygame.display.update()
+			pygame.time.delay(5000)
+			ball.reset()
+			left_paddle.reset()
+			right_paddle.reset()
+			LEFT_SCORE = 0
+			RIGHT_SCORE = 0
+			game(s, left_paddle, right_paddle, ball)
 
+def main():
 
+	left_paddle = Paddle(10, HEIGHT//2 - PADDLE_HEIGHT//2,PADDLE_WIDTH,PADDLE_HEIGHT)
+	right_paddle = Paddle(WIDTH - 10 - PADDLE_WIDTH, HEIGHT//2 - PADDLE_HEIGHT//2,PADDLE_WIDTH,PADDLE_HEIGHT)
+	ball = Ball(WIDTH//2, HEIGHT//2, BALL_RADIUS)
+
+	s =  socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+	s.bind((HOST, PORT))
+	thread = threading.Thread(target=handle_client, args=(s,left_paddle, right_paddle), daemon=True)
+	thread.start()
+
+	game(s, left_paddle, right_paddle, ball)
+	
 	pygame.quit()
 
 	
-
-
 
 if __name__ == '__main__':
 	main()
