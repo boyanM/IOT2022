@@ -36,6 +36,8 @@ SCORE_FONT = pygame.font.SysFont("comicsans",50)
 
 CONNECTED_PLAYERS = 0
 
+WINNING_SCORE = 10
+
 
 def handle_client(conn,paddle):
 	prev = ""
@@ -71,6 +73,10 @@ class Paddle:
 		self.width = width
 		self.height = height
 
+		#Set original x & y to reset
+		self.x_initial = x
+		self.y_initial = y
+
 	def draw(self, board):
 		pygame.draw.rect(board, self.COLOR, (self.x, self.y, self.width, self.height))
 
@@ -79,6 +85,9 @@ class Paddle:
 			self.y = self.y - self.VELOCITY
 		else:
 			self.y = self.y + self.VELOCITY
+	def reset(self):
+		self.x = self.x_initial
+		self.y = self.y_initial
 
 
 class Ball:
@@ -210,7 +219,7 @@ def main():
 
 		if CONNECTED_PLAYERS == 1:
 			BOARD.blit(p1_ready_msg, (WIDTH//4 - p1_ready_msg.get_width()//2,250))
-			
+
 		elif CONNECTED_PLAYERS == 2:
 			BOARD.blit(p2_ready_msg, ((WIDTH//4)*3 - p2_ready_msg.get_width()//2,20))
 			BOARD.blit(start_msg, (WIDTH//2 - start_msg.get_width()//2,20))
@@ -240,6 +249,26 @@ def main():
 		elif ball.x >= WIDTH:
 			LEFT_SCORE += 1
 			ball.reset()
+
+		won = False
+
+	if LEFT_SCORE >= WINNING_SCORE:
+		won = True
+		win_text = "Left Player Won!"
+	elif RIGHT_SCORE >= WINNING_SCORE:
+		won = True
+		win_text = "Right Player Won!"
+
+	if won:
+		text = SCORE_FONT.render(win_text, 1, WHITE)
+		BOARD.blit(text, (WIDTH//2 - text.get_width()//2, HEIGHT//2 - text.get_height()//2))
+		pygame.display.update()
+		pygame.time.delay(5000)
+		ball.reset()
+		left_paddle.reset()
+		right_paddle.reset()
+		LEFT_SCORE = 0
+		RIGHT_SCORE = 0
 
 
 	pygame.quit()
