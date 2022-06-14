@@ -3,7 +3,7 @@
 import threading
 import socket
 import time
-HOST = "192.168.0.104"  # Standard loopback interface address (localhost)
+HOST = "127.0.0.1"  # Standard loopback interface address (localhost)
 PORT = 65432  # Port to listen on (non-privileged ports are > 1023)
 FORMAT = 'utf-8'
 
@@ -34,6 +34,7 @@ BLACK = (0,0,0)
 
 SCORE_FONT = pygame.font.SysFont("comicsans",50)
 
+CONNECTED_PLAYERS = 0
 
 
 def handle_client(conn,paddle):
@@ -168,28 +169,57 @@ def main():
 	global LEFT_SCORE, RIGHT_SCORE
 
 	run = True
+	wait = True
 	clock = pygame.time.Clock()
 
 	left_paddle = Paddle(10, HEIGHT//2 - PADDLE_HEIGHT//2,PADDLE_WIDTH,PADDLE_HEIGHT)
 	right_paddle = Paddle(WIDTH - 10 - PADDLE_WIDTH, HEIGHT//2 - PADDLE_HEIGHT//2,PADDLE_WIDTH,PADDLE_HEIGHT)
 	ball = Ball(WIDTH//2, HEIGHT//2, BALL_RADIUS)
 
-	##### SOCKET
 
-	CONNECTED_PLAYERS = 0
+
+	##### Player 1 - SOCKET
+
 	s =  socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
 	s.bind((HOST, PORT))
 	thread = threading.Thread(target=handle_client, args=(s,left_paddle), daemon=True)
 	thread.start()
 	#########
 
-	##### SOCKET 2
+	##### Player 2 - SOCKET
 
 	s2 =  socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
 	s2.bind((HOST, 65443))
 	thread2 = threading.Thread(target=handle_client, args=(s2,right_paddle), daemon=True)
 	thread2.start()
+	#########
+
+
+	wait_msg = SCORE_FONT.render(f"Waiting for players", 1, WHITE)
+	start_msg = SCORE_FONT.render(f"Game starts in: 3s.",1,WHITE)
+
+	p1_ready_msg = SCORE_FONT.render(f"Plater 1 Ready", 1, WHITE)
+	p2_ready_msg = SCORE_FONT.render(f"Player 2 Ready", 1, WHITE)
+
+	while wait:
+		clock.tick(FPS)
+		BOARD.fill(BLACK)
 	
+	
+		BOARD.blit(wait_msg, (WIDTH//2 - wait_msg.get_width()//2,20))
+
+		if CONNECTED_PLAYERS == 1:
+			BOARD.blit(p1_ready_msg, (WIDTH//4 - p1_ready_msg.get_width()//2,250))
+			
+		elif CONNECTED_PLAYERS == 2:
+			BOARD.blit(p2_ready_msg, ((WIDTH//4)*3 - p2_ready_msg.get_width()//2,20))
+			BOARD.blit(start_msg, (WIDTH//2 - start_msg.get_width()//2,20))
+			wait=False
+			pygame.time.wait(3000)
+
+		pygame.display.update()
+
+
 	while run:
 
 		clock.tick(FPS)
