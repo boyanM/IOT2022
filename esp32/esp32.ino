@@ -1,5 +1,4 @@
 #include <WiFi.h>
-#include <NeoPixelBus.h>
 #include <WiFiUdp.h>
 #include <LiquidCrystal_I2C.h>
 
@@ -9,12 +8,10 @@
 #define RESTART_DELAY 10000
 #define DEFAULT_RESTART_DELAY 10000
 #define BUFFER_SIZE 40
+#define PACKET_SIZE 3
+
 int lcdColumns = 16;
 int lcdRows = 2;
-
-const uint16_t PIXEL_COUNT = 8;
-const uint8_t P1_PIXEL_PIN = 7;  
-const uint8_t P2_PIXEL_PIN = 8;  
 
 const int P1_UP = 2;
 const int P1_DOWN = 4;
@@ -28,15 +25,15 @@ const uint16_t PORT = 65432;
 const uint8_t UP_COMMAND[3] = "U1";
 const uint8_t DOWN_COMMAND[3] = "D1";
 
-byte buffer[11];
-WiFiUDP udp;
-uint8_t score[11];
-NeoPixelBus<NeoGrbFeature, NeoEsp32BitBang800KbpsMethod> scoreP1(PIXEL_COUNT, P1_PIXEL_PIN);
+//---------------- GLOBAL OBJECT DEFINITIONS -----------------------
 
-TaskHandle_t p1Handler;
+WiFiUDP udp;
+WiFiClient p1_client;
+
 LiquidCrystal_I2C lcd(0x27, lcdColumns, lcdRows);  
 
-//---------------- Restart -----------------------
+TaskHandle_t p1Handler;
+
 
 //---------------- PINOUTS -----------------------
 void initPins() {
@@ -56,11 +53,6 @@ void initWifi() {
   Serial.println("Wifi connection established");
 }
 
-
-
-WiFiClient p1_client;
-
-
 void initSockets() {
 
   Serial.println("Connecting to socket");
@@ -70,35 +62,38 @@ void initSockets() {
 
   }
 }
-//---------------- Setup -----------------------
+void initLCD() {
+    lcd.init();
+    lcd.backlight();
+}
+//---------------- SETUP -----------------------
 void setup() {
 
   Serial.begin(115200L);
   while (!Serial); // wait for serial attach  
 
-  delay(max(DEFAULT_RESTART_DELAY, RESTART_DELAY));
-  lcd.init();
-  // turn on LCD backlight                      
-  lcd.backlight();
+  initLCD();
   initPins();
   initWifi();
-  //initSockets();
+  // setup thread
   xTaskCreatePinnedToCore(
-                    Task1code,   /* Task function. */
-                    "Player1",     /* name of task. */
-                    10000,       /* Stack size of task */
-                    NULL,        /* parameter of the task */
-                    1,           /* priority of the task */
-                    &p1Handler,      /* Task handle to keep track of created task */
-                    0);          /* pin task to core 0 */       
+                    ScoreLCD,    
+                    "ScoreLCD",  
+                    10000,         
+                    NULL,          
+                    1,             
+                    &p1Handler,    
+                    0);                
   
 }
 
-void  Task1code(void * pvParameters) {
+void  ScoreLCD(void * pvParameters) {
     uint8_t buffer[BUFFER_SIZE];
     String line = "";
+
     for(;;) {
       udp.parsePacket();
+    
       if(udp.read(buffer,BUFFER_SIZE) > 0)
       {
         line = String((char*)buffer);
@@ -113,7 +108,9 @@ void  Task1code(void * pvParameters) {
        
       }
       delay(INPUT_DELAY);
+    
     }
+
     vTaskDelete(NULL);
 }
 
@@ -122,13 +119,13 @@ void loop() {
 
   if(digitalRead(P1_UP) == LOW) {
      udp.beginPacket(HOST,PORT);
-     udp.write(UP_COMMAND, 3);
+     udp.write(UP_COMMAND, PACKET_SIZE);
      udp.endPacket();
      delay(INPUT_DELAY);
 
   }else if(digitalRead(P1_DOWN) == LOW) {
       udp.beginPacket(HOST, PORT);
-     udp.write(DOWN_COMMAND, 3);
+     udp.write(DOWN_COMMAND, PACKET_SIZE);
      udp.endPacket();
     delay(INPUT_DELAY);
   }
