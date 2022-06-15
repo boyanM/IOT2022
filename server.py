@@ -37,8 +37,7 @@ BLACK = (0,0,0)
 
 SCORE_FONT = pygame.font.SysFont("comicsans",50)
 
-WINNING_SCORE = 10
-
+WINNING_SCORE = 5
 
 def handle_client(conn,left_paddle, right_paddle):
 	prev = ""
@@ -186,7 +185,7 @@ def handle_paddle_movement(keys, left_paddle, right_paddle):
 
 def game(s, left_paddle, right_paddle, ball):
 	global LEFT_SCORE, RIGHT_SCORE
-
+	global p1Connected, p2Connected
 	run = True
 	wait = True
 	clock = pygame.time.Clock()
@@ -266,6 +265,8 @@ def game(s, left_paddle, right_paddle, ball):
 			right_paddle.reset()
 			LEFT_SCORE = 0
 			RIGHT_SCORE = 0
+			p1Connected = False
+			p2Connected = False
 			game(s, left_paddle, right_paddle, ball)
 
 def main():

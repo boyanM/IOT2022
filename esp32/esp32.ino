@@ -8,7 +8,7 @@
 #define EMPTY_COLOR   RgbColor(0) 
 #define RESTART_DELAY 10000
 #define DEFAULT_RESTART_DELAY 10000
-#define BUFFER_SIZE 4
+#define BUFFER_SIZE 40
 int lcdColumns = 16;
 int lcdRows = 2;
 
@@ -19,14 +19,14 @@ const uint8_t P2_PIXEL_PIN = 8;
 const int P1_UP = 2;
 const int P1_DOWN = 4;
 
-const char* SSID = "DTM";
-const char* PASSWORD = "atiradeon21";
+const char* SSID = "";
+const char* PASSWORD = "";
 
 const char* HOST = "192.168.0.104";
 const uint16_t PORT = 65432;
 
 const uint8_t UP_COMMAND[3] = "U1";
-const uint8_t DOWN_COMMAND[3] = "U2";
+const uint8_t DOWN_COMMAND[3] = "D1";
 
 byte buffer[11];
 WiFiUDP udp;
@@ -90,7 +90,7 @@ void setup() {
                     NULL,        /* parameter of the task */
                     1,           /* priority of the task */
                     &p1Handler,      /* Task handle to keep track of created task */
-                    0);          /* pin task to core 0 */     
+                    0);          /* pin task to core 0 */       
   
 }
 
